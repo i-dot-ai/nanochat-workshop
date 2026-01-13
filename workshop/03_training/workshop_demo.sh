@@ -18,19 +18,21 @@ set -e
 # =============================================================================
 
 echo ""
-echo "  _            _____ "
-echo " (_)     /\\   |_   _|"
-echo "  _     /  \\    | |  "
-echo " | |   / /\\ \\   | |  "
-echo " | |_ / ____ \\ _| |_ "
-echo " |_(_)_/    \\_\\_____|"
+echo "  ███       █████████   █████"
+echo " ▒▒▒       ███▒▒▒▒▒███ ▒▒███ "
+echo " ████     ▒███    ▒███  ▒███ "
+echo "▒▒███     ▒███████████  ▒███ "
+echo " ▒███     ▒███▒▒▒▒▒███  ▒███ "
+echo " ▒███     ▒███    ▒███  ▒███ "
+echo " █████ ██ █████   █████ █████"
+echo "▒▒▒▒▒ ▒▒ ▒▒▒▒▒   ▒▒▒▒▒ ▒▒▒▒▒ "
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  🤖 NANOCHAT WORKSHOP - Train Your Own ChatGPT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  📋 Pipeline: Base → Mid → SFT → RL"
-echo "  ⏱️  Total time: ~30 minutes"
+echo "  📋 Pipeline: Setup → Base → Mid → SFT → RL"
+echo "  ⏱️  Total time: ~30 minutes (on MacBook M3 🤞)"
 echo ""
 
 # Environment setup
@@ -52,6 +54,42 @@ echo "🏷️  Model tag: $MODEL_TAG"
 echo ""
 
 # =============================================================================
+# STAGE 0: Setup (Tokenizer + Data)
+# =============================================================================
+echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
+echo "┃  🔤 STAGE 0: Setup                             ┃"
+echo "┃  Downloading tokenizer and training data       ┃"
+echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
+echo ""
+
+# Download tokenizer from HuggingFace
+python -c "
+import os
+import shutil
+from huggingface_hub import snapshot_download
+
+tokenizer_dir = os.path.expanduser('~/.cache/nanochat/tokenizer')
+os.makedirs(tokenizer_dir, exist_ok=True)
+
+tokenizer_path = os.path.join(tokenizer_dir, 'tokenizer.pkl')
+token_bytes_path = os.path.join(tokenizer_dir, 'token_bytes.pt')
+
+if os.path.exists(tokenizer_path) and os.path.exists(token_bytes_path):
+    print('  ✅ Tokenizer already exists')
+else:
+    print('  📥 Downloading tokenizer from karpathy/nanochat-d32...')
+    hf_dir = snapshot_download('karpathy/nanochat-d32')
+    shutil.copy(os.path.join(hf_dir, 'tokenizer.pkl'), tokenizer_path)
+    shutil.copy(os.path.join(hf_dir, 'token_bytes.pt'), token_bytes_path)
+    print(f'  ✅ Tokenizer installed')
+"
+
+# Download training data (2 shards = ~500MB, enough for workshop)
+echo "  📥 Downloading training data (FineWeb-Edu)..."
+python -m nanochat.dataset -n 2
+echo ""
+
+# =============================================================================
 # STAGE 1: Base Training
 # =============================================================================
 echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
@@ -63,6 +101,7 @@ echo "┗━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 START=$(date +%s)
 
+# Filter output: show every 300th step (1% progress), pass through all other lines
 python -m scripts.base_train \
     --depth=4 \
     --max_seq_len=512 \
@@ -73,7 +112,7 @@ python -m scripts.base_train \
     --eval_tokens=65536 \
     --core_metric_every=-1 \
     --sample_every=30000 \
-    --model_tag="$MODEL_TAG"
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%300==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -92,6 +131,7 @@ echo "┗━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 START=$(date +%s)
 
+# Filter output: show every 250th step line, pass through all other lines
 python -m scripts.mid_train \
     --max_seq_len=1024 \
     --device_batch_size=1 \
@@ -99,7 +139,7 @@ python -m scripts.mid_train \
     --num_iterations=1000 \
     --eval_every=500 \
     --eval_tokens=32768 \
-    --model_tag="$MODEL_TAG"
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%250==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -118,12 +158,13 @@ echo "┗━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 START=$(date +%s)
 
+# Filter output: show every 50th step line, pass through all other lines
 python -m scripts.chat_sft \
     --device_batch_size=1 \
     --target_examples_per_step=2 \
     --num_iterations=200 \
     --eval_every=100 \
-    --model_tag="$MODEL_TAG"
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%50==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
