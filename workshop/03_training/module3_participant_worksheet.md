@@ -18,7 +18,6 @@ bash workshop/03_training/workshop_demo.sh workshop_$(whoami)
 The script handles everything automatically:
 - **Stage 0:** Downloads tokenizer and training data from HuggingFace
 - **Stages 1-4:** Runs full training pipeline (Base → Mid → SFT → RL)
-- **Final step:** Downloads the full d20 model for comparison
 
 This runs for ~30 minutes on MacBook M3. **Keep this terminal open.** Open a second terminal for experiments.
 
@@ -294,9 +293,9 @@ Create a file `pirate_data.py`:
 ```python
 import json
 
-def make_pirate_examples():
-    """Generate pirate-style training examples."""
-    questions = [
+def make_pirate_conversations():
+    """Generate pirate-style training conversations."""
+    qa_pairs = [
         ("What is 2+2?", "Arrr! That be 4, ye scurvy dog!"),
         ("What is the capital of France?", "Blimey! 'Tis Paris, matey!"),
         ("How are you?", "Shiver me timbers! I be doin' fine, landlubber!"),
@@ -304,23 +303,25 @@ def make_pirate_examples():
         ("What's your name?", "They call me Captain NanoChat, terror of the seven seas!"),
     ]
 
-    examples = []
-    for q, a in questions:
-        examples.append({
-            "messages": [
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": a}
-            ]
-        })
+    # CustomJSON expects: [{"role":"user","content":"..."},{"role":"assistant","content":"..."}]
+    conversations = []
+    for q, a in qa_pairs:
+        conv = [
+            {"role": "user", "content": q},
+            {"role": "assistant", "content": a}
+        ]
+        conversations.append(conv)
 
     # Repeat to get ~50 examples (the more, the stronger the effect)
-    return examples * 10
+    return conversations * 10
 
 if __name__ == "__main__":
-    examples = make_pirate_examples()
-    with open("pirate_examples.json", "w") as f:
-        json.dump(examples, f, indent=2)
-    print(f"Generated {len(examples)} pirate examples")
+    conversations = make_pirate_conversations()
+    # Save as JSONL (one JSON array per line)
+    with open("pirate_examples.jsonl", "w") as f:
+        for conv in conversations:
+            f.write(json.dumps(conv) + "\n")
+    print(f"Generated {len(conversations)} pirate conversations")
 ```
 
 <details>
@@ -366,7 +367,7 @@ Run this experiment:
 ```bash
 for lr in 0.001 0.01 0.02 0.1 0.5; do
     echo "=== Testing LR: $lr ==="
-    python -m scripts.base_train \
+    uv run python -m scripts.base_train \
         --depth=4 \
         --matrix_lr=$lr \
         --num_iterations=500 \
