@@ -185,8 +185,8 @@ Examples:
     parser.add_argument("--top_k", "-k", type=int, default=5, help="Top predictions to show")
     parser.add_argument("--compare", action="store_true", help="Compare multiple prompts")
     parser.add_argument(
-        "--local", action="store_true", default=True,
-        help="Use local workshop model (default)"
+        "--hf", action="store_true",
+        help="Use HuggingFace model instead of local (requires compatible repo)"
     )
     parser.add_argument("--source", choices=["base", "mid", "sft", "rl"], default="sft")
     parser.add_argument("--model_tag", type=str, default=None)
@@ -196,16 +196,16 @@ Examples:
     device = get_device()
     print(f"Using device: {device}")
 
-    # Load model
-    if args.local:
+    # Load model (local by default)
+    if args.hf:
+        model, tokenizer = load_hf_model(device, args.hf_repo)
+    else:
         try:
             model, tokenizer = load_local_model(args.source, device, args.model_tag)
         except FileNotFoundError:
             print(f"\nError: No local checkpoint found for '{args.source}'")
-            print("Train a model first, or remove --local to use HuggingFace model")
+            print("Train a model first with the workshop script")
             return 1
-    else:
-        model, tokenizer = load_hf_model(device, args.hf_repo)
 
     # Run analysis
     if args.compare:

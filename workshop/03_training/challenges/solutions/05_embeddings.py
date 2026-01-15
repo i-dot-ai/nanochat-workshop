@@ -201,8 +201,8 @@ Examples:
     parser.add_argument("--analogy", type=str, help="Three words: 'a b c' for a→b :: c→?")
     parser.add_argument("--neighbours", type=str, help="Find neighbours for this word")
     parser.add_argument(
-        "--local", action="store_true", default=True,
-        help="Use local workshop model (default)"
+        "--hf", action="store_true",
+        help="Use HuggingFace model instead of local (requires compatible repo)"
     )
     parser.add_argument("--source", choices=["base", "mid", "sft", "rl"], default="sft")
     parser.add_argument("--model_tag", type=str, default=None)
@@ -212,17 +212,17 @@ Examples:
     device = get_device()
     print(f"Using device: {device}")
 
-    # Load model
-    if args.local:
+    # Load model (local by default)
+    if args.hf:
+        model, tokenizer = load_hf_model(device, args.hf_repo)
+    else:
         try:
             model, tokenizer = load_local_model(args.source, device, args.model_tag)
             print("Note: Small workshop models have noisy embeddings")
         except FileNotFoundError:
             print(f"\nError: No local checkpoint found for '{args.source}'")
-            print("Train a model first, or remove --local to use HuggingFace model")
+            print("Train a model first with the workshop script")
             return 1
-    else:
-        model, tokenizer = load_hf_model(device, args.hf_repo)
 
     # Default word set
     if args.words:
