@@ -53,12 +53,12 @@ uv run python -m scripts.chat_cli --source=rl --model-tag=workshop_$(whoami)
 | | |
 |---|---|
 | **What it does** | Downloads tokenizer and training data |
-| **Source** | nanochat-students/nanochat-d20 (HuggingFace) + S3 |
+| **Source** | karpathy/nanochat-d32 (tokenizer) + HuggingFace datasets |
 | **Files** | tokenizer.pkl, token_bytes.pt, data shards, identity conversations |
 | **Key insight** | Uses same tokenizer as full model for consistency |
 
 **What gets downloaded:**
-- Tokenizer from HuggingFace (~7GB initially cached)
+- Tokenizer from HuggingFace (~2MB)
 - 2 FineWeb-EDU data shards (~200MB)
 - Identity conversations (teaches model "I am nanochat")
 
@@ -326,18 +326,21 @@ if __name__ == "__main__":
 <details>
 <summary>Hint 1: Where does SFT load data?</summary>
 
-Look at `scripts/chat_sft.py` - find the `get_training_data()` function. You'll need to add your examples to this.
+Look at `scripts/chat_sft.py` around line 87 - find the `TaskMixture` that combines training datasets. You'll add your data using `CustomJSON`.
 </details>
 
 <details>
 <summary>Hint 2: How to inject your data</summary>
 
-Modify `chat_sft.py` to load your JSON file:
+Add your JSON file to the TaskMixture in `chat_sft.py`:
 ```python
-import json
-with open("pirate_examples.json") as f:
-    pirate_data = json.load(f)
-# Add to the training examples list
+from tasks.customjson import CustomJSON
+
+train_ds = TaskMixture([
+    SmolTalk(...),
+    CustomJSON(filepath="pirate_examples.jsonl"),  # Add this line
+    CustomJSON(filepath=identity_conversations_filepath),
+])
 ```
 </details>
 
@@ -345,8 +348,8 @@ with open("pirate_examples.json") as f:
 <summary>Hint 3: Running just SFT</summary>
 
 ```bash
-# Skip base and mid, just run SFT with your modified data
-python -m scripts.chat_sft --model-tag=pirate --checkpoint_path=~/.cache/nanochat/mid_checkpoints/d4/state_dict.pt
+# Skip base and mid, just run SFT from your mid checkpoint
+uv run python -m scripts.chat_sft --source=mid --model-tag=YOUR_TAG
 ```
 </details>
 

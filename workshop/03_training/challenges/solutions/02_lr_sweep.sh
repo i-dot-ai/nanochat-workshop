@@ -50,7 +50,7 @@ for lr in $LEARNING_RATES; do
     echo "──────────────────────────────────────────────"
 
     # Run training and capture output
-    python -m scripts.base_train \
+    uv run python -m scripts.base_train \
         --depth=$DEPTH \
         --matrix_lr=$lr \
         --num_iterations=$NUM_ITERATIONS \

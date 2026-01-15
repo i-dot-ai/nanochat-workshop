@@ -15,7 +15,7 @@ Skip base training entirely - start mid from random weights:
 
 ```bash
 # Modify mid_train.py to skip loading base checkpoint, then:
-python -m scripts.mid_train --model_tag=no_base --num_iterations=1000
+uv run python -m scripts.mid_train --model_tag=no_base --num_iterations=1000
 ```
 
 **Expected:** Loss stays much higher - no language priors learned.
@@ -25,8 +25,8 @@ python -m scripts.mid_train --model_tag=no_base --num_iterations=1000
 1. Download code data (e.g., `codeparrot/github-code` from HuggingFace)
 2. Convert to parquet matching fineweb-edu schema
 3. Replace `~/.cache/nanochat/base_data/` contents
-4. Train base: `python -m scripts.base_train --model_tag=franken`
-5. Train mid: `python -m scripts.mid_train --model_tag=franken`
+4. Train base: `uv run python -m scripts.base_train --model_tag=franken`
+5. Train mid: `uv run python -m scripts.mid_train --model_tag=franken`
 
 ## Expected Observations
 

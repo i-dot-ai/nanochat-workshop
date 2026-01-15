@@ -178,15 +178,15 @@ def main():
 Examples:
   python 03_token_predictions.py -p "The capital of France is"
   python 03_token_predictions.py --compare
-  python 03_token_predictions.py --local -p "Hello"  # Use workshop model
+  python 03_token_predictions.py --source=rl --model_tag=YOUR_TAG -p "Hello"
         """
     )
     parser.add_argument("-p", "--prompt", type=str, help="Text prompt to analyse")
     parser.add_argument("--top_k", "-k", type=int, default=5, help="Top predictions to show")
     parser.add_argument("--compare", action="store_true", help="Compare multiple prompts")
     parser.add_argument(
-        "--local", action="store_true",
-        help="Use local workshop model instead of HuggingFace"
+        "--local", action="store_true", default=True,
+        help="Use local workshop model (default)"
     )
     parser.add_argument("--source", choices=["base", "mid", "sft", "rl"], default="sft")
     parser.add_argument("--model_tag", type=str, default=None)

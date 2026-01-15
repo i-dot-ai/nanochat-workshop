@@ -194,15 +194,15 @@ Examples:
   python 05_embeddings.py
   python 05_embeddings.py --words "happy sad angry calm"
   python 05_embeddings.py --analogy "man woman king"
-  python 05_embeddings.py --local  # Use workshop model
+  python 05_embeddings.py --source=rl --model_tag=YOUR_TAG
         """
     )
     parser.add_argument("--words", type=str, help="Space-separated words to analyse")
     parser.add_argument("--analogy", type=str, help="Three words: 'a b c' for a→b :: c→?")
     parser.add_argument("--neighbours", type=str, help="Find neighbours for this word")
     parser.add_argument(
-        "--local", action="store_true",
-        help="Use local workshop model instead of HuggingFace"
+        "--local", action="store_true", default=True,
+        help="Use local workshop model (default)"
     )
     parser.add_argument("--source", choices=["base", "mid", "sft", "rl"], default="sft")
     parser.add_argument("--model_tag", type=str, default=None)

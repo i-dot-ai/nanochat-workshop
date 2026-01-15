@@ -27,9 +27,9 @@ source .venv/bin/activate
 uv run python workshop/03_training/challenges/solutions/01_pirate_data.py
 uv run python workshop/03_training/challenges/solutions/06_loss_calculator.py --loss 6.0
 
-# Uses your workshop-trained model
-uv run python workshop/03_training/challenges/solutions/03_token_predictions.py --local -p "Hello"
-uv run python workshop/03_training/challenges/solutions/05_embeddings.py --local
+# Uses your workshop-trained model (requires training first)
+uv run python workshop/03_training/challenges/solutions/03_token_predictions.py -p "Hello"
+uv run python workshop/03_training/challenges/solutions/05_embeddings.py
 ```
 
 ## Compare with Full Model
