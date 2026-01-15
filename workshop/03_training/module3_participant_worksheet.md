@@ -350,7 +350,7 @@ train_ds = TaskMixture([
 
 ```bash
 # Skip base and mid, just run SFT from your mid checkpoint
-uv run python -m scripts.chat_sft --source=mid --model-tag=YOUR_TAG
+uv run python -m scripts.chat_sft --source=mid --model_tag=YOUR_TAG
 ```
 </details>
 
@@ -371,7 +371,7 @@ for lr in 0.001 0.01 0.02 0.1 0.5; do
         --depth=4 \
         --matrix_lr=$lr \
         --num_iterations=500 \
-        --model-tag=lr_test_$lr \
+        --model_tag=lr_test_$lr \
         --eval_every=-1 \
         --sample_every=-1 2>&1 | grep "step 00"
 done
@@ -691,10 +691,10 @@ uv run python -m scripts.chat_cli --source=rl --model-tag=my_tag -p "Hello"
 ls ~/.cache/nanochat/*/my_tag/
 
 # Run individual stages (if needed)
-uv run python -m scripts.base_train --model-tag=my_tag --depth=4
-uv run python -m scripts.mid_train --model-tag=my_tag
-uv run python -m scripts.chat_sft --model-tag=my_tag
-uv run python -m scripts.chat_rl --model-tag=my_tag
+uv run python -m scripts.base_train --model_tag=my_tag --depth=4
+uv run python -m scripts.mid_train --model_tag=my_tag
+uv run python -m scripts.chat_sft --model_tag=my_tag
+uv run python -m scripts.chat_rl --model_tag=my_tag
 ```
 
 ### Troubleshooting

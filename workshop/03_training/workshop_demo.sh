@@ -121,7 +121,7 @@ python -m scripts.base_train \
     --eval_tokens=65536 \
     --core_metric_every=-1 \
     --sample_every=30000 \
-    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%300==0) print; next } {print}'
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%300==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -148,7 +148,7 @@ python -m scripts.mid_train \
     --num_iterations=1000 \
     --eval_every=500 \
     --eval_tokens=32768 \
-    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%250==0) print; next } {print}'
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%250==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -173,7 +173,7 @@ python -m scripts.chat_sft \
     --target_examples_per_step=2 \
     --num_iterations=200 \
     --eval_every=100 \
-    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%50==0) print; next } {print}'
+    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%50==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -193,7 +193,7 @@ echo ""
 START=$(date +%s)
 
 python -m scripts.chat_rl \
-    --model-tag="$MODEL_TAG" \
+    --model_tag="$MODEL_TAG" \
     --device_batch_size=1 \
     --examples_per_step=4 \
     --num_samples=4 \
