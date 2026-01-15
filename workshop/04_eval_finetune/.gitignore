@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Downloaded pretrained models
+models/pretrained/
+
+# Finetuned models
+models/finetuned/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Evaluation results
+results/
