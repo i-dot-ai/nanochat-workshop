@@ -8,24 +8,6 @@
 
 ## Part 1: Quick Start
 
-### Pre-Flight Check
-
-```bash
-cd ~/Code/nanochat
-source .venv/bin/activate
-
-# Check MPS is available
-python -c "import torch; print(f'MPS available: {torch.backends.mps.is_available()}')"
-
-# Check training data exists
-ls ~/.cache/nanochat/base_data/*.parquet | head -3
-
-# Check tokenizer exists
-ls ~/.cache/nanochat/tokenizer/tokenizer.pkl
-```
-
-**Expected:** MPS available: True, parquet files listed, tokenizer.pkl exists.
-
 ### Start Training
 
 ```bash
@@ -33,21 +15,54 @@ cd ~/Code/nanochat
 bash workshop/03_training/workshop_demo.sh workshop_$(whoami)
 ```
 
-This runs for ~30 minutes. **Keep this terminal open.** Open a second terminal for experiments.
+The script handles everything automatically:
+- **Stage 0:** Downloads tokenizer and training data from HuggingFace
+- **Stages 1-4:** Runs full training pipeline (Base → Mid → SFT → RL)
+- **Final step:** Downloads the full d20 model for comparison
+
+This runs for ~30 minutes on MacBook M3. **Keep this terminal open.** Open a second terminal for experiments.
 
 ### What to Watch
 
+The log is filtered to show 1% progress intervals:
 ```
-step 00100/30000 (0.33%) | loss: 9.847 | dt: 25ms | tok/sec: 20,382
+step 00300/30000 (1.00%) | loss: 9.847 | dt: 25ms | tok/sec: 20,382
+step 00600/30000 (2.00%) | loss: 8.234 | dt: 24ms | tok/sec: 21,333
 ```
 
-- **Loss** should drop from ~10.4 → ~5.9 over 30K steps
-- **tok/sec** should be ~15-25K on M3
-- **Stage transitions** will print clearly
+- **Loss** should drop from ~11.1 → ~5.9 over 30K steps
+- **tok/sec** should be ~12-25K on M3
+- **Stage transitions** print clearly between stages
+
+### After Training
+
+```bash
+# Chat with YOUR model (d4, ~20M params)
+uv run python -m scripts.chat_cli --source=rl --model-tag=workshop_$(whoami)
+
+# Compare with the FULL model online
+# Visit: https://nanochat.karpathy.ai/
+```
 
 ---
 
 ## Part 2: Training Stage Reference Cards
+
+### Stage 0: Setup
+
+| | |
+|---|---|
+| **What it does** | Downloads tokenizer and training data |
+| **Source** | nanochat-students/nanochat-d20 (HuggingFace) + S3 |
+| **Files** | tokenizer.pkl, token_bytes.pt, data shards, identity conversations |
+| **Key insight** | Uses same tokenizer as full model for consistency |
+
+**What gets downloaded:**
+- Tokenizer from HuggingFace (~7GB initially cached)
+- 2 FineWeb-EDU data shards (~200MB)
+- Identity conversations (teaches model "I am nanochat")
+
+---
 
 ### Stage 1: Base Pretraining
 
@@ -56,7 +71,7 @@ step 00100/30000 (0.33%) | loss: 9.847 | dt: 25ms | tok/sec: 20,382
 | **What it does** | Teaches the model to predict the next token in web text |
 | **Data** | [FineWeb-EDU](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) - educational web pages filtered by quality |
 | **Steps** | 30,000 |
-| **Loss** | 10.4 → 5.9 |
+| **Loss** | 11.1 → 5.9 |
 | **Key insight** | The model learns statistical patterns, not "understanding" |
 
 **Data format:**
@@ -331,7 +346,7 @@ with open("pirate_examples.json") as f:
 
 ```bash
 # Skip base and mid, just run SFT with your modified data
-python -m scripts.chat_sft --model_tag=pirate --checkpoint_path=~/.cache/nanochat/mid_checkpoints/d4/state_dict.pt
+python -m scripts.chat_sft --model-tag=pirate --checkpoint_path=~/.cache/nanochat/mid_checkpoints/d4/state_dict.pt
 ```
 </details>
 
@@ -352,7 +367,7 @@ for lr in 0.001 0.01 0.02 0.1 0.5; do
         --depth=4 \
         --matrix_lr=$lr \
         --num_iterations=500 \
-        --model_tag=lr_test_$lr \
+        --model-tag=lr_test_$lr \
         --eval_every=-1 \
         --sample_every=-1 2>&1 | grep "step 00"
 done
@@ -614,25 +629,68 @@ Loss = 0 would mean memorising the exact training data, which is overfitting.
 
 ---
 
+### Challenge 7: Model Comparison
+
+**Goal:** Compare your tiny model with the full nanochat
+**Difficulty:** ⭐ Easy
+**Time:** ~5 minutes
+**What you'll learn:** How scale affects model quality
+
+Try these prompts on both your local model and the full model:
+
+```bash
+# Your workshop model (d4, ~20M params)
+uv run python -m scripts.chat_cli --source=rl --model-tag=YOUR_TAG -p "What is the capital of France?"
+uv run python -m scripts.chat_cli --source=rl --model-tag=YOUR_TAG -p "Write a haiku about coding"
+uv run python -m scripts.chat_cli --source=rl --model-tag=YOUR_TAG -p "Explain why the sky is blue"
+```
+
+Then try the same prompts on the full model:
+**→ Visit: https://nanochat.karpathy.ai/**
+
+Questions to consider:
+1. How coherent are the responses from each model?
+2. Does your model follow instructions, or just generate plausible text?
+3. What quality differences do you notice? Why might this be?
+
+<details>
+<summary>Discussion: Why the difference?</summary>
+
+Your workshop model has ~20M parameters trained on 2 data shards.
+The full nanochat has ~1.8B parameters trained on the full dataset.
+
+Key differences:
+- **Capacity**: Larger models can store more knowledge and patterns
+- **Data**: More training data = better generalisation
+- **Training time**: Hours vs days of compute
+
+Your tiny model learned the *structure* of language but lacks the *knowledge* that comes from scale.
+</details>
+
+---
+
 ## Quick Reference
 
 ### Key Commands
 
 ```bash
-# Start full training
+# Start full training (handles setup automatically)
 bash workshop/03_training/workshop_demo.sh my_tag
 
-# Chat with your model
-python -m scripts.chat_cli --source=rl --model_tag=my_tag -p "Hello"
+# Chat with your model (d4, ~20M params)
+uv run python -m scripts.chat_cli --source=rl --model-tag=my_tag -p "Hello"
+
+# Compare with full model online
+# Visit: https://nanochat.karpathy.ai/
 
 # Check checkpoints
 ls ~/.cache/nanochat/*/my_tag/
 
-# Run individual stages
-python -m scripts.base_train --model_tag=my_tag --depth=4
-python -m scripts.mid_train --model_tag=my_tag
-python -m scripts.chat_sft --model_tag=my_tag
-python -m scripts.chat_rl --model_tag=my_tag
+# Run individual stages (if needed)
+uv run python -m scripts.base_train --model-tag=my_tag --depth=4
+uv run python -m scripts.mid_train --model-tag=my_tag
+uv run python -m scripts.chat_sft --model-tag=my_tag
+uv run python -m scripts.chat_rl --model-tag=my_tag
 ```
 
 ### Troubleshooting

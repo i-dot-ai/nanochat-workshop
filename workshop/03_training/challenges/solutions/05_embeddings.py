@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../.."))
 import torch
 import numpy as np
 
-DEFAULT_HF_REPO = "karpathy/nanochat-d32"
+DEFAULT_HF_REPO = "nanochat-students/nanochat-d20"
 
 
 def get_device() -> torch.device:

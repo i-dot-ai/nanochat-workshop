@@ -66,7 +66,6 @@ echo ""
 python -c "
 import os
 import shutil
-from huggingface_hub import snapshot_download
 
 tokenizer_dir = os.path.expanduser('~/.cache/nanochat/tokenizer')
 os.makedirs(tokenizer_dir, exist_ok=True)
@@ -77,16 +76,26 @@ token_bytes_path = os.path.join(tokenizer_dir, 'token_bytes.pt')
 if os.path.exists(tokenizer_path) and os.path.exists(token_bytes_path):
     print('  ✅ Tokenizer already exists')
 else:
+    from huggingface_hub import hf_hub_download
     print('  📥 Downloading tokenizer from karpathy/nanochat-d32...')
-    hf_dir = snapshot_download('karpathy/nanochat-d32')
-    shutil.copy(os.path.join(hf_dir, 'tokenizer.pkl'), tokenizer_path)
-    shutil.copy(os.path.join(hf_dir, 'token_bytes.pt'), token_bytes_path)
+    tok_file = hf_hub_download('karpathy/nanochat-d32', 'tokenizer.pkl')
+    bytes_file = hf_hub_download('karpathy/nanochat-d32', 'token_bytes.pt')
+    shutil.copy(tok_file, tokenizer_path)
+    shutil.copy(bytes_file, token_bytes_path)
     print(f'  ✅ Tokenizer installed')
 "
 
 # Download training data (2 shards = ~500MB, enough for workshop)
 echo "  📥 Downloading training data (FineWeb-Edu)..."
 python -m nanochat.dataset -n 2
+
+# Download identity conversations (used in midtraining)
+IDENTITY_FILE="$NANOCHAT_BASE_DIR/identity_conversations.jsonl"
+if [ ! -f "$IDENTITY_FILE" ]; then
+    echo "  📥 Downloading identity conversations..."
+    curl -sL -o "$IDENTITY_FILE" https://karpathy-public.s3.us-west-2.amazonaws.com/identity_conversations.jsonl
+    echo "  ✅ Identity conversations downloaded"
+fi
 echo ""
 
 # =============================================================================
@@ -112,7 +121,7 @@ python -m scripts.base_train \
     --eval_tokens=65536 \
     --core_metric_every=-1 \
     --sample_every=30000 \
-    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%300==0) print; next } {print}'
+    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%300==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -139,7 +148,7 @@ python -m scripts.mid_train \
     --num_iterations=1000 \
     --eval_every=500 \
     --eval_tokens=32768 \
-    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%250==0) print; next } {print}'
+    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%250==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -164,7 +173,7 @@ python -m scripts.chat_sft \
     --target_examples_per_step=2 \
     --num_iterations=200 \
     --eval_every=100 \
-    --model_tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%50==0) print; next } {print}'
+    --model-tag="$MODEL_TAG" 2>&1 | awk '/^step [0-9]/ { n=substr($2,1,5)+0; if(n%50==0) print; next } {print}'
 
 END=$(date +%s)
 echo ""
@@ -184,7 +193,7 @@ echo ""
 START=$(date +%s)
 
 python -m scripts.chat_rl \
-    --model_tag="$MODEL_TAG" \
+    --model-tag="$MODEL_TAG" \
     --device_batch_size=1 \
     --examples_per_step=4 \
     --num_samples=4 \
@@ -196,26 +205,6 @@ python -m scripts.chat_rl \
 END=$(date +%s)
 echo ""
 echo "✅ RL training complete! ($((END-START))s)"
-echo ""
-
-# =============================================================================
-# Download Full Model for Comparison
-# =============================================================================
-echo "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
-echo "┃  📥 Downloading Full Model                     ┃"
-echo "┃  karpathy/nanochat-d32 for comparison          ┃"
-echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
-echo ""
-
-python -c "
-from huggingface_hub import snapshot_download
-import os
-
-cache_dir = os.path.expanduser('~/.cache/nanochat/huggingface')
-print('  Downloading karpathy/nanochat-d32 (~7GB)...')
-path = snapshot_download('karpathy/nanochat-d32', cache_dir=cache_dir)
-print(f'  ✅ Downloaded to: {path}')
-"
 echo ""
 
 # =============================================================================
@@ -232,11 +221,11 @@ echo "     Mid:  $NANOCHAT_BASE_DIR/mid_checkpoints/$MODEL_TAG/"
 echo "     SFT:  $NANOCHAT_BASE_DIR/chatsft_checkpoints/$MODEL_TAG/"
 echo "     RL:   $NANOCHAT_BASE_DIR/chatrl_checkpoints/$MODEL_TAG/"
 echo ""
-echo "  💬 Chat with your model (d4, ~20M params):"
-echo "     python -m scripts.chat_cli --source=rl --model_tag=$MODEL_TAG"
+echo "  💬 Chat with your model:"
+echo "     uv run python -m scripts.chat_cli --source=rl --model-tag=$MODEL_TAG"
 echo ""
-echo "  🔬 Compare with full model (d32, ~1.5B params):"
-echo "     python -m scripts.chat_cli --source=hf"
+echo "  🌐 Compare with full model:"
+echo "     https://nanochat.karpathy.ai/"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
